@@ -1,6 +1,6 @@
 package chess.Board;
 
-public abstract class BoardUtils {
+public abstract class BoardUtils{
 
     public static final boolean[] FIRST_COLUMN = initFiles(0);
     public static final boolean[] SECOND_COLUMN = initFiles(1);
@@ -20,7 +20,8 @@ public abstract class BoardUtils {
     public static final boolean[] SECOND_RANK = initRanks(6);
     public static final boolean[] FIRST_RANK = initRanks(7);
 
-    private BoardUtils() {
+    private BoardUtils()
+    {
         throw new IllegalStateException("Utility class");
     }
     /*
@@ -28,7 +29,8 @@ public abstract class BoardUtils {
      * 
      * Returns true if coordinate is equal to or greather than 0 and less than 64.
      */
-    public static final boolean isValidCoordinate(final int coordinates) {
+    public static final boolean isValidCoordinate(final int coordinates)
+    {
         return coordinates >= 0 && coordinates < 64;
     }
 
@@ -36,7 +38,8 @@ public abstract class BoardUtils {
      * Initialize a column array. This is used to speed up the process of checking if a tile is in a given column. This is only performed once.
      * 
     */
-    public static boolean[] initFiles(int columnNumber) {
+    public static boolean[] initFiles(int columnNumber)
+    {
         boolean[] column = new boolean[64];
         int startOffset = columnNumber; // Start from the given column index at the top (a8, b8, ..., h8)
     
@@ -50,7 +53,8 @@ public abstract class BoardUtils {
     /*
      * Initialize a rank array. This is used to speed up the process of checking if a tile is in a given rank. This is only performed once.
     */
-    public static boolean[] initRanks(int rankNumber) {
+    public static boolean[] initRanks(int rankNumber)
+    {
         boolean[] rank = new boolean[64];
         int startOffset = rankNumber * 8; // Calculate the starting index for the rank (0-7 for a8-h8, 8-15 for a7-h7, ..., 56-63 for a1-h1)
         int endOffset = startOffset + 8;  // Calculate the ending index for the rank
@@ -60,4 +64,15 @@ public abstract class BoardUtils {
         }
         return rank;
     }
+    public static boolean isSameFile(int destinationSquare, int sourcePosition)
+    {
+        return destinationSquare % 8 == sourcePosition % 8;
+    }
+    public static boolean isSameRank(int destinationSquare, int sourcePosition)
+    {
+        return destinationSquare / 8 == sourcePosition / 8;
+    }
+    public static boolean isSameColor(int pieceCode, int pieceCode2){
+        return ((pieceCode & 0b11000) == (pieceCode2 & 0b11000));
+    };
 }
