@@ -1,6 +1,10 @@
 package chess.Board;
 
+import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.Deque;
+
+import chess.Board.Move.Move;
 import chess.Pieces.Piece;
 
 public class Board {
@@ -20,9 +24,13 @@ public class Board {
 
     private long[] bitboards = new long[12];
     private Integer enPassantSquare = null;
+    private final Deque<Move> moveHistory = new ArrayDeque<>(); //save the move history
 
     static final int chessTiles = 64;
     static final int rows = 8;
+
+    private boolean isWhiteToMove = true;
+    private boolean isBotWhite;
 
     /*
      * Constructor of a normal chess board.
@@ -38,6 +46,15 @@ public class Board {
     }
     public static Board getChessBoard(){
         return new Board();
+    }
+
+    public Board(){}
+    public Board(Board other)
+    {
+        this.bitboards = Arrays.copyOf(other.bitboards, other.bitboards.length);
+        this.enPassantSquare = other.enPassantSquare;
+        this.isWhiteToMove = other.isWhiteToMove;
+        this.isBotWhite = other.isBotWhite;
     }
 
 /*
@@ -112,15 +129,44 @@ public class Board {
             }
         }
     }
-    public void placePiece(Piece piece) {
+    public void placePiece(Piece piece)
+    {
         int position = 63 - piece.getPiecePosition();
-        int pieceType = piece.getPieceType();
-        bitboards[pieceType] |= (1L << position);
+        int color = piece.getPieceColor();
+        int type = piece.getPieceType();
+
+        int boardIndex = -1;
+        switch (type)
+        {
+            case 0b001: // Pawn
+                boardIndex = (color == 0b10000) ? wP : bP;
+                break;
+            case 0b010: // Knight
+                boardIndex = (color == 0b10000) ? wN : bN;
+                break;
+            case 0b100: // Bishop
+                boardIndex = (color == 0b10000) ? wB : bB;
+                break;
+            case 0b101: // Rook
+                boardIndex = (color == 0b10000) ? wR : bR;
+                break;
+            case 0b110: // Queen
+                boardIndex = (color == 0b10000) ? wQ : bQ;
+                break;
+            case 0b111:  // King
+                boardIndex = (color == 0b10000) ? wK : bK;
+                break;
+        }
+
+        if (boardIndex != -1)
+        {
+            bitboards[boardIndex] |= (1L << position);
+        }
     }
 
     public boolean isEmpty(int square)
     {
-        long bit = 1L << square;
+        long bit = 1L << 63 - square;
         for(long bitboard : bitboards)
         {
             if ((bitboard & bit)!= 0) 
@@ -150,6 +196,138 @@ public class Board {
     public void setEnPassantSquare(int enPassantSquare){
         this.enPassantSquare = enPassantSquare;
     }
+
+    public boolean isKingInCheck(boolean isWhite)
+    {
+        long kingBitBoard = isWhite ? bitboards[wK] : bitboards[bK];
+        //if (Long.bitCount(kingBitBoard) != 1) throw new RuntimeException("There cannot be more than one king per side!");
+        int kingSquare = Long.numberOfTrailingZeros(kingBitBoard);
+
+        if (hasDiagonalAttackers(kingSquare,isWhite)) return true;
+        if (hasStraightAttackers(kingSquare,isWhite)) return true;
+
+        long knightAttacks = calculateKnightAttacks(kingSquare);
+        long enemyKnights = isWhite ? bitboards[bN] : bitboards[wN];
+        if ((knightAttacks & enemyKnights) != 0) return true;
+
+        long pawnAttacks = calculatePawnAttacks(kingSquare,isWhite);
+        long enemyPawns = isWhite ? bitboards[bP] : bitboards[wP];
+        if ((pawnAttacks & enemyPawns) != 0) return true;
+
+        return false;
+    }
+
+    public void makeMove(int fromSquare, int toSquare)
+    {
+        int pieceCode = getPieceCode(fromSquare);
+        int capturedPieceCode = getPieceCode(toSquare);
+
+        //if (pieceCode == -1) return;
+
+        Move move = new Move(fromSquare,toSquare,pieceCode,capturedPieceCode,enPassantSquare);
+        moveHistory.push(move);
+
+        long fromBit = 1L << (63 - fromSquare);
+        long toBit = 1L << (63 - toSquare);
+
+        bitboards[pieceCode] ^= fromBit | toBit; // XOR to toggle
+
+        if (capturedPieceCode != -1)
+        {
+           bitboards[capturedPieceCode] &= ~toBit;  //bitboards[capturedPieceCode] ^= fromBit | toBit;  bitboards[capturedPieceCode] &= ~toBit;
+        }
+
+        isWhiteToMove = !isWhiteToMove;
+        enPassantSquare = null;
+    }
+
+    public void unMakeMove()
+    {
+        Move move = moveHistory.pop();
+
+        long fromBit = 1L << (63 - move.getFrom());
+        long toBit = 1L << (63 - move.getTo());
+        bitboards[move.getPiece()] ^= fromBit | toBit; // Toggle
+
+        if (move.getCapturedPiece() != -1)
+        {
+            bitboards[move.getCapturedPiece()] |= toBit; // Restore captured piece
+        }
+
+        enPassantSquare = move.getEnPassantBefore();
+    }
+
+    private boolean hasStraightAttackers(int kingSquare, boolean isWhite)
+    {
+        int[] dirs = {-8, 8, -1, 1}; // Rectas
+        long enemy = isWhite ? (bitboards[bR] | bitboards[bQ]) : (bitboards[wR] | bitboards[wQ]);
+        return checkSlidingAttack(kingSquare, dirs, enemy);
+    }
+
+    private boolean hasDiagonalAttackers(int kingSquare, boolean isWhite)
+    {
+        int[] dirs = {-9, -7, 7, 9}; // Diagonales
+        long enemy = isWhite ? (bitboards[bB] | bitboards[bQ]) : (bitboards[wB] | bitboards[wQ]);
+        return checkSlidingAttack(kingSquare, dirs, enemy);
+    }
+
+    private long calculateKnightAttacks(int square)
+    {
+        long attacks = 0L;
+        int[][] moves = {{2,1}, {2,-1}, {-2,1}, {-2,-1}, {1,2}, {1,-2}, {-1,2}, {-1,-2}};
+        for (int[] m : moves)
+        {
+            int r = (square / 8) + m[0], c = (square % 8) + m[1];
+            if (r >= 0 && r < 8 && c >= 0 && c < 8)
+                attacks |= 1L << (r * 8 + c);
+        }
+        return attacks;
+    }
+
+    private long calculatePawnAttacks(int kingSquare, boolean isWhite)
+    { //This can be cached for the same position / turn.    TODO
+
+        long attacks = 0L;
+        int row = kingSquare / 8, col = kingSquare % 8;
+        if (isWhite)
+        {
+            if (row < 7)
+            {
+                if (col > 0) attacks |= 1L << (kingSquare + 7);
+                if (col < 7) attacks |= 1L << (kingSquare + 9);
+            }
+        }
+        else
+        {
+            if (row > 0)
+            {
+                if (col > 0) attacks |= 1L << (kingSquare - 9);
+                if (col < 7) attacks |= 1L << (kingSquare - 7);
+            }
+        }
+        return attacks;
+    }
+
+    private boolean checkSlidingAttack(int square, int[] dirs, long enemy)
+    {
+        for (int dir : dirs)
+        {
+            int pos = square + dir;
+            int prevRow = square / 8, prevCol = square % 8;
+            while (pos >= 0 && pos < 64)
+            {
+                int row = pos / 8, col = pos % 8;
+                // Validar dirección (evitar wraps)
+                if (Math.abs(row - prevRow) > 1 || Math.abs(col - prevCol) > 1) break;
+                if ((enemy & (1L << pos)) != 0) return true;
+                if (!isEmpty(pos)) break; // Bloqueo
+                prevRow = row; prevCol = col;
+                pos += dir;
+            }
+        }
+        return false;
+    }
+
     /*
      * Some code made just for debugging purposes.
      */
@@ -196,5 +374,13 @@ public class Board {
         {
             System.out.println(Arrays.toString(chessBoard[i]));
         }
+    }
+
+    public boolean isWhiteToMove() {
+        return isWhiteToMove;
+    }
+
+    public void setWhiteToMove(boolean whiteToMove) {
+        isWhiteToMove = whiteToMove;
     }
 }

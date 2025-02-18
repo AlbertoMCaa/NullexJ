@@ -21,7 +21,8 @@ public class NewMain {
         initializeMoveGenerators();
     }
 
-    private static void initializeMoveGenerators() {
+    private static void initializeMoveGenerators()
+    {
         final int[][] OFFSETS = {
                 {2, 1}, {2, -1}, {-2, 1}, {-2, -1},
                 {1, 2}, {1, -2}, {-1, 2}, {-1, -2}
@@ -54,9 +55,14 @@ public class NewMain {
         }
     }
 
-    public static void main(String[] args) {
-        Board board = Board.initiateChess();
-        //Board board = new Board();
+    public static void main(String[] args)
+    {
+        //Board board = Board.initiateChess();
+        Board board = new Board();
+
+        for (int square = 0; square < 64; square++) {
+            board.placePiece(new Piece(square, 0b10010));
+        }
 
         if(RUN_WARMUP) {
             runBenchmarkCycle(board, WARMUP_ITERATIONS, true);

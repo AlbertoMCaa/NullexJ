@@ -68,6 +68,7 @@ public class Piece {
     public boolean isValidMove(int destinationSquare, Board board)
     {
         if(!BoardUtils.isValidCoordinate(destinationSquare)){return false;}
+        //if (board.getPieceCode(this.piecePosition) == -1){return false;}
 
         int pieceType = getPieceType();
         int color = getPieceColor();
@@ -76,6 +77,8 @@ public class Piece {
         int currentCol = piecePosition % 8;
         int destRow = destinationSquare / 8;
         int destCol = destinationSquare % 8;
+
+        boolean isPseudoLegal = false;
 
         if (pieceType == 0b001) //Pawn
         {
@@ -86,28 +89,28 @@ public class Piece {
             if(BoardUtils.isSameFile(destinationSquare, this.piecePosition) && BoardUtils.isSameRank(destinationSquare,this.piecePosition + direction * 8)
              && board.isEmpty(destinationSquare))
             {
-                return true;
+                isPseudoLegal = true;
             };
             
             //double move BoardUtils.isSameRank(destinationSquare,this.piecePosition + direction * 2)
             if(BoardUtils.isSameFile(destinationSquare, this.piecePosition) && destRow == startRow + direction * 2 
             && board.isEmpty(destinationSquare) && board.isEmpty(piecePosition + direction))
             {
-                return true;
+                isPseudoLegal = true;
             }
 
             // capture move
             if (Math.abs(destCol - currentCol) == 1 && destRow == currentRow + direction
             && !board.isEmpty(destinationSquare) && !BoardUtils.isSameColor(pieceCode, board.getPieceCode(destinationSquare))) 
             {
-                return true;
+                isPseudoLegal = true;
             }
 
             Integer enPassantSquare = board.getEnPassantSquare();
             if (enPassantSquare != null && Math.abs(destCol - currentCol) == 1 && destRow == currentRow + direction
                 && destinationSquare == enPassantSquare) 
             {
-                return true;
+                isPseudoLegal = true;
             }
         }
         else if (pieceType == 0b010) //Knight
@@ -134,13 +137,17 @@ public class Piece {
             int coldiff = Math.abs(destCol - currentCol);
 
             //Capture move
-            if ((rowdiff == 1 && coldiff == 2 || rowdiff == 2 && coldiff == 1) && !board.isEmpty(destinationSquare) && !BoardUtils.isSameColor(piecePosition, board.getPieceCode(destinationSquare))) {
-                return true;
+            if ((rowdiff == 1 && coldiff == 2 || rowdiff == 2 && coldiff == 1) && !BoardUtils.isSameColor(pieceCode,board.getPieceCode(destinationSquare))) {
+                // I think this can be simplified as (rowdiff == 1 && coldiff == 2 || rowdiff == 2 && coldiff == 1) && !BoardUtils.isSameColor(piecePosition,board.getPieceCode(destinationSquare))
+                //(rowdiff == 1 && coldiff == 2 || rowdiff == 2 && coldiff == 1)
+                //                    && !board.isEmpty(destinationSquare)
+                //                    && !BoardUtils.isSameColor(this.pieceCode, board.getPieceCode(destinationSquare)
+                isPseudoLegal = true;
             }
 
             //normal move
             if ((rowdiff == 1 && coldiff == 2 || rowdiff == 2 && coldiff == 1) && board.isEmpty(destinationSquare)) {
-                return true;
+                isPseudoLegal = true;
             }
         }
         else if (pieceType == 0b100) 
@@ -171,14 +178,28 @@ public class Piece {
                 currentCheckRow += rowDirection;
                 currentCheckCol += colDirection;
             }
-            
-            if (!board.isEmpty(destinationSquare) && BoardUtils.isSameColor(pieceCode, board.getPieceCode(destinationSquare))) 
+
+            if (!board.isEmpty(destinationSquare) && BoardUtils.isSameColor(pieceCode, board.getPieceCode(destinationSquare)))
             {
                 return false;
             }
 
-            return true;
+            isPseudoLegal = true;
         }
-        return false;
+
+        if (!isPseudoLegal)
+        {
+            return false;
+        }
+
+        int originalPosition = this.piecePosition;
+        board.makeMove(originalPosition,destinationSquare);
+
+        boolean isCurrentPlayerWhite = this.getPieceColor() == 0b10000;
+        boolean inCheck = board.isKingInCheck(isCurrentPlayerWhite);
+
+        board.unMakeMove();
+
+        return !inCheck;
     };
 }
