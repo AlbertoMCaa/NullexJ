@@ -1,8 +1,6 @@
 package chess.Board;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import chess.Pieces.Piece;
 
 public class Board {
@@ -29,23 +27,24 @@ public class Board {
     /*
      * Constructor of a normal chess board.
      */
-    public static void initiateChess()
+    public static Board initiateChess()
     {
         Board board = new Board();
         String chessBoard = "rnbqkbnrpppppppp                                PPPPPPPPRNBQKBNR";
         
         board.arrayToBitboards(chessBoard);
-        board.printBitboardArray();
+        //board.printBitboardArray();
+        return board;
     }
-    /*
-     * Bitboards are used to store the position of the pieces on the board.
-     */
+    public static Board getChessBoard(){
+        return new Board();
+    }
 
 /*
  * The first character of the string is the a8 tile and the last tile is the h1 tile. Left to right is the file and top to bottom is the rank.
  * Which means that the bitboard representation of the black rooks is : 10000001 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000
  * 
- * This method takes a Bitboards object, which is an array of 64-bit longs that represents the positions of the pieces on the board. Each piece has it's own bitboard (long).
+ * This method takes a Bitboards object, which is an array of 64-bit longs that represents the positions of the pieces on the board. Each piece type has it's own bitboard (long).
  * This method also takes a String representation of the chess board in one dimensional array.
  * 
  * This representation of the board works as follows:
@@ -63,8 +62,8 @@ public class Board {
  * "bit" is a single-bit mask that shifts to the left  to represent the position in the bitboard. "chessTiles -1 -i" adjusts the index to match the bitboard convention (from a8 to h1)
  * In the first loop iteration, the bit is shifted 63 to the left (64 - 0 - 1) representating a8. Then an "or" operation is performed on the bitboard and the bit is set to 1. 
  * 
- * If the character is a non recognized piece, the default case does nothing.
- */
+ * If the character is a non-recognized piece, the default case does nothing.
+ */ 
     public void arrayToBitboards(String chessBoard)
     {
         for (int i = 0; i < chessTiles; i++)
@@ -113,6 +112,11 @@ public class Board {
             }
         }
     }
+    public void placePiece(Piece piece) {
+        int position = 63 - piece.getPiecePosition();
+        int pieceType = piece.getPieceType();
+        bitboards[pieceType] |= (1L << position);
+    }
 
     public boolean isEmpty(int square)
     {
@@ -127,8 +131,8 @@ public class Board {
         return true;
     }
     public int getPieceCode(int position)
-    {
-        long bit = 1L << position;
+    {   
+        long bit = 1L << 63 - position;
         for(int i = 0; i < bitboards.length; i++)
         {
             if ((bitboards[i] & bit) != 0) 
@@ -139,7 +143,7 @@ public class Board {
         return -1; // there is no piece at this position
     }
 
-    public int getEnPassantSquare()
+    public Integer getEnPassantSquare()
     {
         return enPassantSquare;
     }

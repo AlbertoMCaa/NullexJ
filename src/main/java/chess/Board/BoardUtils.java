@@ -2,14 +2,19 @@ package chess.Board;
 
 public abstract class BoardUtils{
 
-    public static final boolean[] FIRST_COLUMN = initFiles(0);
-    public static final boolean[] SECOND_COLUMN = initFiles(1);
+    public static final long FIRST_COLUMN = 0x0101010101010101L;
+    public static final long SECOND_COLUMN = 0x0202020202020202L;
+    public static final long SEVENTH_COLUMN = 0x4040404040404040L;
+    public static final long EIGHTH_COLUMN = 0x8080808080808080L;
+
+    //public static final boolean[] FIRST_COLUMN = initFiles(0);
+    //public static final boolean[] SECOND_COLUMN = initFiles(1);
     public static final boolean[] THIRD_COLUMN = initFiles(2);
     public static final boolean[] FOURTH_COLUMN = initFiles(3);
     public static final boolean[] FIFTH_COLUMN = initFiles(4);
     public static final boolean[] SIXTH_COLUMN = initFiles(5);
-    public static final boolean[] SEVENTH_COLUMN = initFiles(6);
-    public static final boolean[] EIGHTH_COLUMN = initFiles(7);
+    //public static final boolean[] SEVENTH_COLUMN = initFiles(6);
+    //public static final boolean[] EIGHTH_COLUMN = initFiles(7);
 
     public static final boolean[] EIGHTH_RANK = initRanks(0);
     public static final boolean[] SEVENTH_RANK = initRanks(1);
@@ -27,7 +32,7 @@ public abstract class BoardUtils{
     /*
      * Method used to check if a given coordinate is within the bounds of the chess boards.
      * 
-     * Returns true if coordinate is equal to or greather than 0 and less than 64.
+     * Returns true if coordinate is equal to or greater than 0 and less than 64.
      */
     public static final boolean isValidCoordinate(final int coordinates)
     {
@@ -75,4 +80,46 @@ public abstract class BoardUtils{
     public static boolean isSameColor(int pieceCode, int pieceCode2){
         return ((pieceCode & 0b11000) == (pieceCode2 & 0b11000));
     };
+
+    //Columns
+
+    public static boolean isFirstColumn(int position)
+    {
+        return position % 8 == 0;
+    }
+    public static boolean isSecondColumn(int position)
+    {
+        return position % 8 == 1;
+    }
+    public static boolean isSeventhColumn(int position) 
+    {
+        return position % 8 == 6;
+    }
+    public static boolean isEighthColumn(int position) 
+    {
+        return position % 8 == 7;
+    }
+
+    //Rows 
+
+    public static boolean isFirstRow(int position) 
+    {
+        return position / 8 == 0;
+    }
+
+    public static boolean isSecondRow(int position) 
+    {
+        return position / 8 == 1;
+    }
+
+    public static boolean isSeventhRow(int position) 
+    {
+        return position / 8 == 6;
+    }
+
+    public static boolean isEighthRow(int position) 
+    {
+        return position / 8 == 7;
+    }
+
 }
