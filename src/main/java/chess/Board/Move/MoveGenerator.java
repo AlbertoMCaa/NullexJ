@@ -8,6 +8,7 @@ import java.util.List;
 
 import static chess.Board.Board.*;
 import static chess.Board.Move.Move.*;
+import static chess.Pieces.Piece.NONE;
 
 public class MoveGenerator {
     public static final long[] KNIGHT_ATTACKS = new long[64];
@@ -107,19 +108,20 @@ public class MoveGenerator {
                 } else {
                     moves.add(Move.create(
                             fromSquare, singlePushSquare, 0,
-                            isWhite ? Piece.WHITE_PAWN : Piece.BLACK_PAWN,
-                            NO_CAPTURE, false, false, board.getCastlingRights()
+                            Piece.PAWN,
+                            NONE, false, false, board.getCastlingRights()
                     ));
                 }
 
                 // Double pawn push
                 if (rank == startRank) {
                     int doublePushSquare = fromSquare + (direction * 2);
-                    if ((emptySquares & (1L << doublePushSquare)) != 0) {
+                    if (doublePushSquare >= 0 && doublePushSquare < 64 &&  // This check is crucial
+                            (emptySquares & (1L << doublePushSquare)) != 0) {
                         moves.add(Move.create(
                                 fromSquare, doublePushSquare, 0,
-                                isWhite ? Piece.WHITE_PAWN : Piece.BLACK_PAWN,
-                                NO_CAPTURE, false, false, board.getCastlingRights()
+                                Piece.PAWN,
+                                NONE, false, false, board.getCastlingRights()
                         ));
                     }
                 }
@@ -151,8 +153,8 @@ public class MoveGenerator {
 
                 moves.add(Move.create(
                         fromSquare, toSquare,
-                        0, isWhite ? Piece.WHITE_KNIGHT : Piece.BLACK_KNIGHT,
-                        isCapture ? board.getPieceCode(toSquare) : NO_CAPTURE,
+                        0, Piece.KNIGHT,
+                        isCapture ? board.getPieceCode(toSquare) : NONE, // potential issue
                         false, false, board.getCastlingRights()
                 ));
                 attacks &= attacks - 1;
@@ -175,8 +177,8 @@ public class MoveGenerator {
 
                 moves.add(Move.create(
                         fromSquare, toSquare, 0,
-                        isWhite ? Piece.WHITE_KING : Piece.BLACK_KING,
-                        isCapture ? board.getPieceCode(toSquare) : NO_CAPTURE,
+                        Piece.KING,
+                        isCapture ? board.getPieceCode(toSquare) : NONE,
                         false, false, board.getCastlingRights()
                 ));
                 attacks &= attacks - 1;
@@ -197,7 +199,7 @@ public class MoveGenerator {
             long attacks = getBishopAttacks(fromSquare, occupied) & ~friendlyPieces;
 
             addMovesFromBitboard(fromSquare, attacks, board, moves,
-                    isWhite ? Piece.WHITE_BISHOP : Piece.BLACK_BISHOP);
+                    Piece.BISHOP);
             bishops &= bishops - 1;
         }
     }
@@ -211,7 +213,7 @@ public class MoveGenerator {
             long attacks = getRookAttacks(fromSquare, occupied) & ~friendlyPieces;
 
             addMovesFromBitboard(fromSquare, attacks, board, moves,
-                    isWhite ? Piece.WHITE_ROOK : Piece.BLACK_ROOK);
+                    Piece.ROOK);
             rooks &= rooks - 1;
         }
     }
@@ -225,7 +227,7 @@ public class MoveGenerator {
             long attacks = getQueenAttacks(fromSquare, occupied) & ~friendlyPieces;
 
             addMovesFromBitboard(fromSquare, attacks, board, moves,
-                    isWhite ? Piece.WHITE_QUEEN : Piece.BLACK_QUEEN);
+                    Piece.QUEEN);
             queens &= queens - 1;
         }
     }
@@ -490,6 +492,9 @@ public class MoveGenerator {
 
     private static int findKingSquare(Board board, boolean isWhite) {
         long kingBitboard = isWhite ? board.getBitboard(Board.wK) : board.getBitboard(Board.bK);
+        if (kingBitboard == 0) {
+            throw new RuntimeException("King was captured");
+        }
         return Long.numberOfTrailingZeros(kingBitboard);
     }
     private static void addMovesFromBitboard(int fromSquare, long movesBitboard, Board board, List<Move> moves, int pieceType) {
@@ -498,7 +503,7 @@ public class MoveGenerator {
         while (movesBitboard != 0) {
             int toSquare = Long.numberOfTrailingZeros(movesBitboard);
             boolean isCapture = (enemyPieces & (1L << toSquare)) != 0;
-            int capturedPiece = isCapture ? board.getPieceCode(toSquare) : NO_CAPTURE;
+            int capturedPiece = isCapture ? board.getPieceCode(toSquare) : NONE;
 
             moves.add(Move.create(
                     fromSquare, toSquare, 0, pieceType, capturedPiece,
@@ -564,6 +569,11 @@ public class MoveGenerator {
     }
 
     private static boolean leavesKingInCheck(int fromSquare, int toSquare, int capturedPiece, Board board) {
+
+        if (fromSquare < 0 || fromSquare >= 64 || toSquare < 0 || toSquare >= 64) { // TEMP FIX
+            return true; // Invalid move should be considered illegal
+        }
+
         boolean isWhite = board.isWhiteToMove();
         int kingSquare = findKingSquare(board, isWhite);
 
@@ -649,7 +659,7 @@ public class MoveGenerator {
                 } else {
                     moves.add(Move.create(
                             fromSquare, captureSquare, 0,
-                            isWhite ? Piece.WHITE_PAWN : Piece.BLACK_PAWN,
+                            Piece.PAWN,
                             board.getPieceCode(captureSquare), false, false, board.getCastlingRights()
                     ));
                 }
@@ -666,7 +676,7 @@ public class MoveGenerator {
                 } else {
                     moves.add(Move.create(
                             fromSquare, captureSquare, 0,
-                            isWhite ? Piece.WHITE_PAWN : Piece.BLACK_PAWN,
+                            Piece.PAWN,
                             board.getPieceCode(captureSquare), false, false, board.getCastlingRights()
                     ));
                 }
@@ -675,13 +685,13 @@ public class MoveGenerator {
     }
     private static void addPromotionMoves(List<Move> moves, int fromSquare, int toSquare,
                                           boolean isCapture, boolean isWhite, Board board) {
-        int capturedPiece = isCapture ? board.getPieceCode(toSquare) : NO_CAPTURE;
-        int[] promotionPieces = {Piece.QUEEN, Piece.BLACK_ROOK, Piece.BISHOP, Piece.KNIGHT};
+        int capturedPiece = isCapture ? board.getPieceCode(toSquare) : NONE;
+        int[] promotionPieces = {Piece.QUEEN, Piece.ROOK, Piece.BISHOP, Piece.KNIGHT};
 
         for (int promotionPiece : promotionPieces) {
             moves.add(Move.create(
                     fromSquare, toSquare, promotionPiece,
-                    isWhite ? Piece.WHITE_PAWN : Piece.BLACK_PAWN,
+                    Piece.PAWN,
                     capturedPiece, false, false, board.getCastlingRights()
             ));
         }
@@ -701,8 +711,8 @@ public class MoveGenerator {
                     (pawns & (1L << leftPawnSquare)) != 0) {
                 moves.add(Move.create(
                         leftPawnSquare, enPassantSquare, 0,
-                        isWhite ? Piece.WHITE_PAWN : Piece.BLACK_PAWN,
-                        isWhite ? Piece.BLACK_PAWN : Piece.WHITE_PAWN,
+                        Piece.PAWN,
+                        Piece.PAWN,
                         false, true, board.getCastlingRights()
                 ));
             }
@@ -714,8 +724,8 @@ public class MoveGenerator {
                     (pawns & (1L << rightPawnSquare)) != 0) {
                 moves.add(Move.create(
                         rightPawnSquare, enPassantSquare, 0,
-                        isWhite ? Piece.WHITE_PAWN : Piece.BLACK_PAWN,
-                        isWhite ? Piece.BLACK_PAWN : Piece.WHITE_PAWN,
+                        Piece.PAWN,
+                        Piece.PAWN,
                         false, true, board.getCastlingRights()
                 ));
             }
@@ -737,7 +747,7 @@ public class MoveGenerator {
                 if ((occupied & WHITE_KINGSIDE_EMPTY) == 0 && // f1 and g1 empty (squares 5,6)
                         !isSquareAttacked(5, false, board) && // f1 not attacked
                         !isSquareAttacked(6, false, board)) { // g1 not attacked
-                    moves.add(Move.create(4, 6, 0, Piece.WHITE_KING, NO_CAPTURE,
+                    moves.add(Move.create(4, 6, 0, Piece.KING, NONE,
                             true, false, castlingRights));
                 }
             }
@@ -746,7 +756,7 @@ public class MoveGenerator {
                 if ((occupied & WHITE_QUEENSIDE_EMPTY) == 0 && // b1, c1, d1 empty (squares 1,2,3)
                         !isSquareAttacked(3, false, board) && // d1 not attacked
                         !isSquareAttacked(2, false, board)) { // c1 not attacked
-                    moves.add(Move.create(4, 2, 0, Piece.WHITE_KING, NO_CAPTURE,
+                    moves.add(Move.create(4, 2, 0, Piece.KING, NONE,
                             true, false, castlingRights));
                 }
             }
@@ -756,7 +766,7 @@ public class MoveGenerator {
                 if ((occupied & BLACK_KINGSIDE_EMPTY) == 0 && // f8 and g8 empty (squares 61,62)
                         !isSquareAttacked(61, true, board) && // f8 not attacked
                         !isSquareAttacked(62, true, board)) { // g8 not attacked
-                    moves.add(Move.create(60, 62, 0, Piece.BLACK_KING, NO_CAPTURE,
+                    moves.add(Move.create(60, 62, 0, Piece.KING, NONE,
                             true, false, castlingRights));
                 }
             }
@@ -765,7 +775,7 @@ public class MoveGenerator {
                 if ((occupied & BLACK_QUEENSIDE_EMPTY) == 0 && // b8, c8, d8 empty (squares 57,58,59)
                         !isSquareAttacked(59, true, board) && // d8 not attacked
                         !isSquareAttacked(58, true, board)) { // c8 not attacked
-                    moves.add(Move.create(60, 58, 0, Piece.BLACK_KING, NO_CAPTURE,
+                    moves.add(Move.create(60, 58, 0, Piece.KING, NONE,
                             true, false, castlingRights));
                 }
             }

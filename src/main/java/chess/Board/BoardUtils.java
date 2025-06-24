@@ -142,21 +142,32 @@ public abstract class BoardUtils
      * Some code made just for debugging purposes.
      */
     @SuppressWarnings("unused")
-    public static void printBitboards(Board board)
-    {
-        System.out.println("White Pawns: " + Long.toBinaryString(board.bitboards[wP]));
-        System.out.println("White Knights: " + Long.toBinaryString(board.bitboards[wN]));
-        System.out.println("White Bishops: " + Long.toBinaryString(board.bitboards[wB]));
-        System.out.println("White Rooks: " + Long.toBinaryString(board.bitboards[wR]));
-        System.out.println("White Queens: " + Long.toBinaryString(board.bitboards[wQ]));
-        System.out.println("White Kings: " + Long.toBinaryString(board.bitboards[wK]));
-        System.out.println("Black Pawns: " + Long.toBinaryString(board.bitboards[bP]));
-        System.out.println("Black Knights: " + Long.toBinaryString(board.bitboards[bN]));
-        System.out.println("Black Bishops: " + Long.toBinaryString(board.bitboards[bB]));
-        System.out.println("Black Rooks: " + Long.toBinaryString(board.bitboards[bR]));
-        System.out.println("Black Queens: " + Long.toBinaryString(board.bitboards[bQ]));
-        System.out.println("Black Kings: " + Long.toBinaryString(board.bitboards[bK]));
+    public static void printBitboards(Board board) {
+        final int NAME_WIDTH = 15; // Adjust this to fit longest name + spacing
+
+        for (int i = 0; i < board.bitboards.length; i++) {
+            String pieceName = switch(i) {
+                case wP -> "White Pawns";
+                case wN -> "White Knights";
+                case wB -> "White Bishops";
+                case wR -> "White Rooks";
+                case wQ -> "White Queens";
+                case wK -> "White Kings";
+                case bP -> "Black Pawns";
+                case bN -> "Black Knights";
+                case bB -> "Black Bishops";
+                case bR -> "Black Rooks";
+                case bQ -> "Black Queens";
+                case bK -> "Black Kings";
+                default -> "Unknown";
+            };
+
+            String bits = Long.toBinaryString(board.bitboards[i]);
+            String paddedBits = String.format("%64s", bits).replace(' ', '0'); // pad to 64 bits
+            System.out.printf("%-" + NAME_WIDTH + "s: %s%n", pieceName, paddedBits);
+        }
     }
+
     @SuppressWarnings("unused")
     public static void printBitboardArray(Board board)
     {

@@ -12,7 +12,6 @@ public final class Move {
     private static final int CASTLING_RIGHTS_SHIFT = 25; // bits 25-28 (4 bits)
 
     // Bit masks
-
     private static final int MASK_6  = 0x3F;    // 6 bits mask
     private static final int MASK_3  = 0x7;     // 3 bits mask
     private static final int MASK_4  = 0xF;     // 4 bits mask
@@ -33,6 +32,20 @@ public final class Move {
 
     private Move(int move) {
         this.move = move;
+    }
+
+    public String toString() {
+        return "Move {\n" +
+                "  fromSquare       = " + getFrom() + ",\n" +
+                "  toSquare         = " + getTo() + ",\n" +
+                "  movingPiece      = " + pieceToString(getMovingPiece()) + ",\n" +
+                "  capturedPiece    = " + (getCapturedPiece() == NO_CAPTURE ? "None" : pieceToString(getCapturedPiece())) + ",\n" +
+                "  promotion        = " + (getPromo() == 0 ? "None" : pieceToString(getPromo())) + ",\n" +
+                "  isCastling       = " + isCastling() + ",\n" +
+                "  isEnPassant      = " + isEnPassant() + ",\n" +
+                "  castlingRights   = " + formatCastlingRights(getCastlingRights()) + ",\n" +
+                "  rawBits          = 0b" + String.format("%30s", Integer.toBinaryString(move)).replace(' ', '0') + "\n" +
+                '}';
     }
 
     public static Move create(
@@ -78,5 +91,26 @@ public final class Move {
     }
     public int getRaw() {
         return move;
+    }
+
+    private static String pieceToString(int code) {
+        return switch (code) {
+            case 0b001 -> "Pawn";
+            case 0b010 -> "Knight";
+            case 0b100 -> "Bishop";
+            case 0b101 -> "Rook";
+            case 0b110 -> "Queen";
+            case 0b111 -> "King";
+            default    -> "Unknown(" + code + ")";
+        };
+    }
+
+    private static String formatCastlingRights(byte rights) {
+        StringBuilder sb = new StringBuilder();
+        if ((rights & WHITE_KINGSIDE_BIT) != 0) sb.append('K');
+        if ((rights & WHITE_QUEENSIDE_BIT) != 0) sb.append('Q');
+        if ((rights & BLACK_KINGSIDE_BIT) != 0) sb.append('k');
+        if ((rights & BLACK_QUEENSIDE_BIT) != 0) sb.append('q');
+        return sb.length() > 0 ? sb.toString() : "None";
     }
 }

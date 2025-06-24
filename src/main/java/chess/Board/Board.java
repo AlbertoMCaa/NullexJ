@@ -3,10 +3,10 @@ package chess.Board;
 import java.util.*;
 
 import chess.Board.Move.Move;
-import chess.Pieces.Piece;
 
 import static chess.Board.BoardUtils.*;
-import static chess.Board.Move.Move.NO_CAPTURE;
+import static chess.Board.Move.Move.BLACK_CASTLE_MASK;
+import static chess.Board.Move.Move.WHITE_CASTLE_MASK;
 import static chess.Pieces.Piece.*;
 
 public class Board {
@@ -147,44 +147,23 @@ public class Board {
         occupied = 0L;
         for (long bb : bitboards) occupied |= bb;
     }
-    public int getPieceCode(int position)
-    {
+    public int getPieceCode(int position) { // subject to change.
         long bit = 1L << position;
-        for(int i = 0; i < bitboards.length; i++)
-        {
-            if ((bitboards[i] & bit) != 0)
-            {
-                return switch (i)
-                {
-                    case 0 ->  // wP
-                            0b10001; // White Pawn: 0b10000 (white)
-                    case 1 ->  // wN
-                            0b10010; // White Knight: 0b10000 | 0b010
-                    case 2 ->  // wB
-                            0b10100; // White Bishop: 0b10000 | 0b100
-                    case 3 ->  // wR
-                            0b10101; // White Rook:  0b10000 | 0b101
-                    case 4 ->  // wQ
-                            0b10110; // White Queen: 0b10000 | 0b110
-                    case 5 ->  // wK
-                            0b10111; // White King:  0b10000 | 0b111
-                    case 6 ->  // bP
-                            0b01001; // Black Pawn: 0b01000 (black)
-                    case 7 ->  // bN
-                            0b01010; // Black Knight: 0b01000 | 0b010
-                    case 8 ->  // bB
-                            0b01100; // Black Bishop: 0b01000 | 0b100
-                    case 9 ->  // bR
-                            0b01101; // Black Rook:  0b01000 | 0b101
-                    case 10 -> // bQ
-                            0b01110; // Black Queen: 0b01000 | 0b110
-                    case 11 -> // bK
-                            0b01111; // Black King:  0b01000 | 0b111
-                    default -> -1;
+
+        for (int i = 0; i < bitboards.length; i++) {
+            if ((bitboards[i] & bit) != 0) {
+                return switch (i) {
+                    case 0, 6  -> PAWN;
+                    case 1, 7  -> KNIGHT;
+                    case 2, 8  -> BISHOP;
+                    case 3, 9  -> ROOK;
+                    case 4, 10 -> QUEEN;
+                    case 5, 11 -> KING;
+                    default    -> NONE;
                 };
             }
         }
-        return -1; // there is no piece at this position
+        return NONE;
     }
     public int getPieceBitBoardCode(int position)
     {
@@ -208,141 +187,75 @@ public class Board {
 
     public void makeMove2(Move move)
     {
-        int movingPieceBitboardCode = getPieceBitBoardCode(move.getMovingPiece());
         int fromSquare = move.getFrom();
-        int toSquare =  move.getTo();
-        int promotionPiece = move.getPromo();
-        int capturedPiece = move.getCapturedPiece() != NO_CAPTURE ? getPieceBitBoardCode(toSquare) : NO_CAPTURE; // this is correct
+        int toSquare = move.getTo();
         boolean enPassant = move.isEnPassant();
         boolean castling = move.isCastling();
 
+        int movingPieceBB = getPieceBitBoardCodeForType(move.getMovingPiece(), isWhiteToMove);
+        int promotionPiece = move.getPromo() != 0 ?
+                getPieceBitBoardCodeForType(move.getPromo(), isWhiteToMove) : 0;
+        int capturedPiece = move.getCapturedPiece() != NONE ?
+                getPieceBitBoardCodeForType(move.getCapturedPiece(), !isWhiteToMove) : NONE;
+
         // Always remove the movingPiece from its current square
-        bitboards[movingPieceBitboardCode] ^= 1L << fromSquare;
+        bitboards[movingPieceBB] ^= (1L << fromSquare); // Remove from source
 
-        // The, add it to its destination square if it's not a promotion move
+        // Handle captures
+        if (capturedPiece != NONE) {
+            int captureSquare = enPassant ?
+                    (isWhiteToMove ? toSquare - 8 : toSquare + 8) : toSquare;
+            bitboards[capturedPiece] ^= (1L << captureSquare);
+        }
+
+        // Handle placement
         if (promotionPiece != 0) {
-            int btCode = switch (promotionPiece) {
-                case PAWN -> isWhiteToMove ? wP : bP;
-                case KNIGHT -> isWhiteToMove ? wN : bN;
-                case BISHOP -> isWhiteToMove ? wB : bB;
-                case QUEEN -> isWhiteToMove ? wQ : bQ;
-                case ROOK -> isWhiteToMove ? wR : bR;
-                default -> throw new IllegalStateException("Unexpected value: " + promotionPiece);
-            };
-
-            bitboards[btCode] |= 1L << toSquare;
-
-        } else { // place piece at destination
-            bitboards[movingPieceBitboardCode] |= 1L << toSquare;
+            bitboards[promotionPiece] ^= (1L << toSquare);
+        } else {
+            bitboards[movingPieceBB] ^= (1L << toSquare);
         }
 
-        // handle capturing pieces
-        if (capturedPiece != NO_CAPTURE && !enPassant) {
-            bitboards[capturedPiece] ^= 1L << toSquare;
-        }
-
-        if (enPassant) {
-            int capturedPawnSquare = isWhiteToMove ? toSquare - 8 : toSquare + 8;
-            int capturedPawnCode = isWhiteToMove ? bP : wP;
-            bitboards[capturedPawnCode] ^= 1L << capturedPawnSquare;
+        if (move.getMovingPiece() == KING && !castling) {
+            castlingRights &= (byte)(isWhiteToMove ? ~WHITE_CASTLE_MASK : ~BLACK_CASTLE_MASK);
+        } else if (move.getMovingPiece() == ROOK && !castling) {
+            if (isWhiteToMove) {
+                if (fromSquare == 0) castlingRights &= ~WHITE_QUEENSIDE;
+                else if (fromSquare == 7) castlingRights &= ~WHITE_KINGSIDE;
+            } else {
+                if (fromSquare == 56) castlingRights &= ~BLACK_QUEENSIDE;
+                else if (fromSquare == 63) castlingRights &= ~BLACK_KINGSIDE;
+            }
         }
 
         if (castling) {
-            // Determine if it's kingside or queenside castling
-            final boolean isKingSide = (toSquare - fromSquare) == 2;
             final int rookCode = isWhiteToMove ? wR : bR;
 
-            if (isKingSide) {
-                final int rookFrom = isWhiteToMove ? 7 : 63; // h1 or h8
-                final int rookTo   = isWhiteToMove ? 5 : 61; // f1 or f8
+            if (toSquare > fromSquare) { // Kingside
+                final int rookFrom = isWhiteToMove ? 7 : 63;  // h1/h8
+                final int rookTo = isWhiteToMove ? 5 : 61;    // f1/f8
 
-                bitboards[rookCode] ^= 1L << rookFrom;
-                bitboards[rookCode] |= 1L << rookTo;
-            } else {
-                final int rookFrom = isWhiteToMove ? 0 : 56; // a1 or a8
-                final int rookTo   = isWhiteToMove ? 3 : 59; // d1 or d8
+                // Move rook using XOR (both removal and addition)
+                bitboards[rookCode] ^= (1L << rookFrom) | (1L << rookTo);
+            }
+            else { // Queenside
+                final int rookFrom = isWhiteToMove ? 0 : 56;  // a1/a8
+                final int rookTo = isWhiteToMove ? 3 : 59;    // d1/d8
 
-                bitboards[rookCode] ^= 1L << rookFrom;
-                bitboards[rookCode] |= 1L << rookTo;
+                // Move rook
+                bitboards[rookCode] ^= (1L << rookFrom) | (1L << rookTo);
             }
 
-            // Update castling rights
-            final byte mask = (byte) (isWhiteToMove ? 0b1100 : 0b0011);
-            this.castlingRights &= ~mask; // set to 0 the corresponding bits.
+            // Remove castling rights for this color
+            castlingRights &= (byte)(isWhiteToMove ? ~WHITE_CASTLE_MASK : ~BLACK_CASTLE_MASK);
         }
 
-        // handle king moves (not castling)
-        if (move.getMovingPiece() == KING && !castling) {
-            byte mask = (byte) (isWhiteToMove ? 0b1100 : 0b0011);
-            this.castlingRights &= ~mask; // Clear the bits (remove rights)
-        }
-
-        // handle rook mves
-        if (move.getMovingPiece() == ROOK) {
-            if (isWhiteToMove) {
-                if (fromSquare == 0) { // a1 rook
-                    this.castlingRights &= ~0b0100; // Remove white queenside
-                } else if (fromSquare == 7) { // h1 rook
-                    this.castlingRights &= ~0b1000; // Remove white kingside
-                }
-            }else {
-                if (fromSquare == 56) { // a8 rook
-                    this.castlingRights &= ~0b0001; // Remove black queenside
-                } else if (fromSquare == 63) { // h8 rook
-                    this.castlingRights &= ~0b0010; // Remove black kingside
-                }
-            }
-        }
-
-        // Handle rook captures - remove castling rights if corner rook is captured
-        if (capturedPiece != NO_CAPTURE && move.getCapturedPiece() == ROOK) {
-            if (toSquare == 0) { // a1 rook captured
-                this.castlingRights &= ~0b0100; // Remove white queenside
-            } else if (toSquare == 7) { // h1 rook captured
-                this.castlingRights &= ~0b1000; // Remove white kingside
-            } else if (toSquare == 56) { // a8 rook captured
-                this.castlingRights &= ~0b0001; // Remove black queenside
-            } else if (toSquare == 63) { // h8 rook captured
-                this.castlingRights &= ~0b0010; // Remove black kingside
-            }
-        }
-
+        // Handle en passant
         if (move.getMovingPiece() == PAWN && Math.abs(toSquare - fromSquare) == 16) {
-            // This is a double pawn push - check if enemy pawns can capture en passant
-            int enPassantTargetSquare = isWhiteToMove ? fromSquare + 8 : fromSquare - 8;
-
-            // check for adjacent enemy pawns that can capture
-            int targetFile = enPassantTargetSquare % 8;
-            int targetRank = enPassantTargetSquare / 8;
-
-            boolean canBeCaptured = false;
-            int enemyPawnCode = isWhiteToMove ? bP : wP;
-
-            // check left adjacent file
-            if (targetFile > 0) {
-                int leftSquare = targetRank * 8 + (targetFile - 1);
-                if ((bitboards[enemyPawnCode] & (1L << leftSquare)) != 0) {
-                    canBeCaptured = true;
-                }
-            }
-
-            // check right adjacent file
-            if (targetFile < 7) {
-                int rightSquare = targetRank * 8 + (targetFile + 1);
-                if ((bitboards[enemyPawnCode] & (1L << rightSquare)) != 0){
-                    canBeCaptured = true;
-                }
-            }
-
-            if (canBeCaptured) {
-                this.enPassantSquare = enPassantTargetSquare;
-            } else {
-                // Clear en passant target square for any other move
-                this.enPassantSquare = -1;
-            }
+            this.enPassantSquare = isWhiteToMove ? fromSquare + 8 : fromSquare - 8;
         } else {
             this.enPassantSquare = -1;
         }
+
         Move move1 = Move.create(move.getFrom(),move.getTo(),move.getPromo(),move.getMovingPiece(),move.getCapturedPiece(),castling,this.enPassantSquare != -1,this.castlingRights);
         moveHistory.addLast(move1);
         isWhiteToMove = !isWhiteToMove;
@@ -352,91 +265,73 @@ public class Board {
         if (moveHistory.isEmpty()) return;
         Move move = moveHistory.pollLast();
 
-        int movingPieceBitboardCode = getPieceBitBoardCode(move.getMovingPiece()); // this is correct
+        int movingPieceBB = getPieceBitBoardCodeForType(move.getMovingPiece(), !isWhiteToMove);
         int fromSquare = move.getFrom();
-        int toSquare =  move.getTo();
-        int promotionPiece = move.getPromo(); // returns promoted piece like in the switch.
-        int capturedPiece = move.getCapturedPiece() != NO_CAPTURE ? getPieceBitBoardCode(move.getCapturedPiece()) : NO_CAPTURE; //this is correct
-        boolean enPassant = move.isEnPassant(); // this returns a boolean, if the move was en passant
-        boolean castling = move.isCastling(); // thi is a boolean, also correct.
+        int toSquare = move.getTo();
 
-        isWhiteToMove = !isWhiteToMove;
-
-        // add the moving piece to its original position
-        bitboards[movingPieceBitboardCode] |= 1L << fromSquare;
-        bitboards[movingPieceBitboardCode] &= ~(1L << toSquare); // Remove from destination
-
-        // Restore promotion move
-        if (promotionPiece != 0) {
-            // If it was a promotion, remove the promoted piece from destination
-            int promotedPieceBtCode = switch (promotionPiece) {
-                case PAWN -> isWhiteToMove ? wP : bP;
-                case KNIGHT -> isWhiteToMove ? wN : bN;
-                case BISHOP -> isWhiteToMove ? wB : bB;
-                case QUEEN -> isWhiteToMove ? wQ : bQ;
-                case ROOK -> isWhiteToMove ? wR : bR;
-                default -> throw new IllegalStateException("Unexpected value: " + promotionPiece);
-            };
-            bitboards[promotedPieceBtCode] ^= 1L << toSquare;
-        }
-
-        // 2. Restore captured pieces
-        if (capturedPiece != NO_CAPTURE && !enPassant) {
-            bitboards[capturedPiece] |= 1L << toSquare;
-        }
-
-        // 3. Handle en passant capture reversal
-        if (enPassant) {
-            // Restore the captured pawn
-            int capturedPawnSquare = isWhiteToMove ? toSquare - 8 : toSquare + 8;
-            int capturedPawnCode = isWhiteToMove ? bP : wP;
-            bitboards[capturedPawnCode] |= 1L << capturedPawnSquare;
-            this.enPassantSquare = toSquare; // restore enPassantSquare
+        // Remove piece from destination
+        if (move.getPromo() != 0) {
+            int promoPieceBB = getPieceBitBoardCodeForType(move.getPromo(), !isWhiteToMove);
+            bitboards[promoPieceBB] ^= (1L << toSquare);
         } else {
-            this.enPassantSquare = -1;
+            bitboards[movingPieceBB] ^= (1L << toSquare);
         }
 
-        // 4. Handle castling reversal
-        if (castling) {
-            // Determine if it was kingside or queenside castling
-            final boolean isKingSide = (toSquare - fromSquare) == 2;
-            final int rookCode = isWhiteToMove ? wR : bR;
+        // Restore to source
+        bitboards[movingPieceBB] ^= (1L << fromSquare);
 
-            if (isKingSide) {
-                final int rookFrom = isWhiteToMove ? 7 : 63; // h1 or h8 (original position)
-                final int rookTo = isWhiteToMove ? 5 : 61;   // f1 or f8 (where it moved to)
+        // Restore captured piece
+        if (move.getCapturedPiece() != NONE) {
+            int capturedPieceBB = getPieceBitBoardCodeForType(
+                    move.getCapturedPiece(), isWhiteToMove);
+            int captureSquare = move.isEnPassant() ?
+                    (isWhiteToMove ? toSquare + 8 : toSquare - 8) : toSquare;
+            bitboards[capturedPieceBB] ^= (1L << captureSquare);
+        }
 
-                // Move rook back from f1/f8 to h1/h8
-                bitboards[rookCode] ^= 1L << rookTo;
-                bitboards[rookCode] |= 1L << rookFrom;
+        if (move.isCastling()) {
+            final int rookCode = isWhiteToMove ? bR : wR; // Note color flip
 
-                this.castlingRights |= (byte) (isWhiteToMove ?
-                                        (WHITE_KINGSIDE | WHITE_QUEENSIDE) :
-                                        (BLACK_KINGSIDE | BLACK_QUEENSIDE));
-            } else {
-                final int rookFrom = isWhiteToMove ? 0 : 56; // a1 or a8 (original position)
-                final int rookTo = isWhiteToMove ? 3 : 59;   // d1 or d8 (where it moved to)
+            if (move.getTo() > move.getFrom()) { // Kingside
+                final int rookFrom = isWhiteToMove ? 5 : 61;   // f1/f8 (current)
+                final int rookTo = isWhiteToMove ? 7 : 63;     // h1/h8 (original)
 
-                // Move rook back from d1/d8 to a1/a8
-                bitboards[rookCode] ^= 1L << rookTo;
-                bitboards[rookCode] |= 1L << rookFrom;
+                bitboards[rookCode] ^= (1L << rookFrom) | (1L << rookTo);
+            }
+            else { // Queenside
+                final int rookFrom = isWhiteToMove ? 3 : 59;   // d1/d8 (current)
+                final int rookTo = isWhiteToMove ? 0 : 56;     // a1/a8 (original)
 
-                this.castlingRights |= (byte) (isWhiteToMove ?
-                                        (WHITE_KINGSIDE | WHITE_QUEENSIDE) :
-                                        (BLACK_KINGSIDE | BLACK_QUEENSIDE));
+                bitboards[rookCode] ^= (1L << rookFrom) | (1L << rookTo);
             }
         }
 
-        if (move.getMovingPiece() == KING && !castling) {
-            int originalSquare = isWhiteToMove ? 4 : 60;
-            boolean can = toSquare == originalSquare;
+        // Restore game state
+        isWhiteToMove = !isWhiteToMove;
+        this.castlingRights = move.getCastlingRights();
+        this.enPassantSquare = move.isEnPassant() ? toSquare : -1;
 
-            byte mask = (byte) (isWhiteToMove ? 0b1100 : 0b0011);
-            this.castlingRights &= ~mask;
+        updateOccupied();
+    }
+
+    public void validateBoardConsistency(Move move) {
+        long allPieces = 0;
+        for (long bb : bitboards) {
+            if ((allPieces & bb) != 0) {
+                System.out.println("Board Consistency Error: " + Long.toBinaryString(bb));
+                printBitboards(this);
+                System.out.println(move.toString());
+                System.out.println("----------------");
+                System.out.println(this);
+                throw new IllegalStateException("Piece overlap detected");
+            }
+            allPieces |= bb;
         }
 
-        // 6. Update occupied bitboards
-        updateOccupied();
+        // Verify exactly one king per side
+        if (Long.bitCount(bitboards[wK]) != 1 || Long.bitCount(bitboards[bK]) != 1) {
+            throw new IllegalStateException("Invalid king count");
+        }
     }
 
     public boolean isWhiteToMove() {
@@ -608,6 +503,19 @@ public class Board {
         }
     }
 
+    public void validateBoard() {
+        for (int i = 0; i < 64; i++) {
+            int count = 0;
+            for (long bb : bitboards) {
+                if ((bb & (1L << i)) != 0) count++;
+            }
+            if (count > 1) {
+                printBitboards(this);
+                throw new IllegalStateException("Multiple pieces at square " + i + " QUANTITY: " + count);
+            }
+        }
+    }
+
     /**
      * Parses the castling rights portion of the FEN string
      * Supports both standard FEN (KQkq) and Shredder-FEN (file letters A-H, a-h)
@@ -734,5 +642,27 @@ public class Board {
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Invalid fullmove counter: " + fullmoveCounterStr);
         }
+    }
+    private int getPieceBitBoardCodeForType(int pieceType, boolean isWhite) {
+        return switch (pieceType) {
+            case PAWN -> isWhite ? wP : bP;
+            case KNIGHT -> isWhite ? wN : bN;
+            case BISHOP -> isWhite ? wB : bB;
+            case ROOK -> isWhite ? wR : bR;
+            case QUEEN -> isWhite ? wQ : bQ;
+            case KING -> isWhite ? wK : bK;
+            default -> throw new IllegalArgumentException("Invalid piece type");
+        };
+    }
+
+    @Override
+    public String toString() {
+        return "Board{" +
+                ", enPassantSquare=" + enPassantSquare +
+                ", castlingRights=" + castlingRights +
+                ", isWhiteToMove=" + isWhiteToMove +
+                ", isBotWhite=" + isBotWhite +
+                ", occupied=" + occupied +
+                '}';
     }
 }

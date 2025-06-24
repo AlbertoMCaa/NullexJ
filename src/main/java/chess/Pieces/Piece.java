@@ -1,8 +1,5 @@
 package chess.Pieces;
 
-import chess.Board.Board;
-import chess.Board.BoardUtils;
-
 /*
  * This class represents a piece in the chess game.
  * 0b00000
@@ -36,13 +33,11 @@ public class Piece {
     public static final int WHITE_PAWN = 0b10001;
     public static final int BLACK_PAWN = 0b01001;
 
+    public static final int NONE = 0b000;
     public static final int PAWN = 0b001;
     public static final int KNIGHT = 0b010;
     public static final int BISHOP = 0b100;
     public static final int QUEEN = 0b110;
     public static final int ROOK = 0b101;
     public static final int KING = 0b111;
-
-    private static final int colorMask = 0b11000;
-    private static final int pieceTypeMask = 0b111;
 }
