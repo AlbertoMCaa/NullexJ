@@ -44,7 +44,7 @@ It features **bitboard-based move generation**, **magic bitboards** for sliding 
 * [ ] Killer move & history heuristics
 * [ ] Time management (clock awareness)
 * [ ] Opening book (basic support)
-* [ ] **Perft mode** for validating move generation
+* ✅ **Perft mode** for validating move generation
 
 ### 🧠 Advanced Features
 
