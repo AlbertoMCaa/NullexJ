@@ -6,25 +6,14 @@ It features **bitboard-based move generation**, **magic bitboards** for sliding 
 
 ## ✅ Features Implemented
 
-* ⚡ **Fast move generation** (\~80M moves/sec average) ** Need to make a more robust test **
+* ⚡ **Fast move generation**
 * ♜ **Full support for all move types**:
-  * Normal moves
-  * Castling
-  * En passant
-  * Promotions
 * 🧠 **Bitboard-based board representation**
 * ✨ **Magic bitboards** for efficient sliding piece attacks
-* 📦 **Moves packed** into a single 30-bit `int`
-* ♻️ `makeMove` v2 using optimized bitboard logic
-* ⏪ **Undo move** functionality
+* 📦 **Moves packed** into a single 16-bit `int`
 * 🧾 **FEN** support for board initialization
-* 🧮 Basic **evaluation function**
-* 🤖 Basic bot using **minimax + evaluation**
-* ✨  Minimax algorithm
-* 🧮  King check detection via simulated bitboard updates
-
-* * 🗃️ `Piece` class deprecated – now used only for constants
-
+* 🧮  King check detection via simulated bitboard updates (Much faster than making moves)
+  
 ## 🔧 TO DO
 
 ### 🧩 Core Mechanics
