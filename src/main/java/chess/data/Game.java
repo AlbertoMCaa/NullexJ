@@ -8,7 +8,8 @@ public record Game(
         Position position,
         List<Position> history,
         GameState state,
-        List<Move> legalMoves
+        List<Move> legalMoves,
+        List<Move> moveHistory
 ) {
     public static Game newStandardGame() {
         Position starPos = FenParser.standPos();
@@ -16,6 +17,7 @@ public record Game(
                 starPos,
                 List.of(starPos),
                 new GameState.Ongoing(),
+                List.of(),
                 List.of()
         );
     }
@@ -26,6 +28,7 @@ public record Game(
                 fenGame,
                 List.of(fenGame),
                 new GameState.Ongoing(),
+                List.of(),
                 List.of()
         );
     }
