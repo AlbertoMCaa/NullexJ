@@ -1,5 +1,8 @@
 package chess.data;
 
+import static chess.utilities.squareUtilities.squareToAlgebraic;
+import static chess.utilities.squareUtilities.validateSquare;
+
 /**
  * Bit Layout:
  * Bits  0–5   : destination square (0–63)
@@ -112,22 +115,10 @@ public record Move(int encoded) {
                 | (specialFlag & SPECIAL_MASK) << SPECIAL_SHIFT;
     }
 
-    private static void validateSquare(int square, String name) {
-        if (square < 0 || square > 63) {
-            throw new IllegalArgumentException(name + " square must be 0-63, got: " + square);
-        }
-    }
-
     private static void validatePromoType(int promoType) {
         if (promoType < 0 || promoType > 3) {
             throw new IllegalArgumentException("Promotion type must be 0-3, got: " + promoType);
         }
-    }
-
-    private static String squareToAlgebraic(int square) {
-        int file = square % 8;
-        int rank = square / 8;
-        return "" + (char)('a' + file) + (char)('1' + rank);
     }
 
     private static char promoTypeToChar(int promoType) {

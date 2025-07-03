@@ -1,4 +1,4 @@
-package chess.functions.fen;
+package chess.functions.parser;
 
 import chess.data.Color;
 import chess.data.Position;

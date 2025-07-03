@@ -18,4 +18,16 @@ public enum PieceType {
         int pieceIndex = index % 6;
         return values()[pieceIndex];
     }
+
+    public static boolean isPawn(int pieceIndex) {
+        return pieceIndex == 0 || pieceIndex == 6;
+    }
+
+    public static boolean isKing(int pieceIndex) {
+        return pieceIndex == 5 || pieceIndex == 11;
+    }
+
+    public static PieceType getPieceType(int pieceIndex) {
+        return PieceType.values()[pieceIndex % 6];
+    }
 }

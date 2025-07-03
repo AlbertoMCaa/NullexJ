@@ -1,6 +1,6 @@
 package chess.data;
 
-import chess.functions.fen.FenParser;
+import chess.functions.parser.FenParser;
 
 import java.util.List;
 

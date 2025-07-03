@@ -20,11 +20,12 @@ public class GameFunctions {
           game.position(),
           game.history(),
           state,
-          legalMoves
+          legalMoves,
+          game.moveHistory()
         );
     }
 
-    public static Game makeMove(Game game, Move move) {
+    public static Game applyMove(Game game, Move move) {
         if (game.isGameOver()) {
             throw new IllegalStateException("Cannot make move: game is over");
         }
@@ -36,6 +37,7 @@ public class GameFunctions {
 
         Position newPosition = MoveApplication.applyMove(game.position(), move);
         List<Position> newHistory = appendToHistory(game.history(), newPosition);
+        List<Move> newMoveHistory = appendToHistory(game.moveHistory(),move);
 
         List<Move> newLegalMoves = MoveGeneration.generateLegalMoves(newPosition);
 
@@ -44,7 +46,8 @@ public class GameFunctions {
                 newPosition,
                 newHistory,
                 newState,
-                newLegalMoves
+                newLegalMoves,
+                newMoveHistory
         );
     }
 
@@ -52,7 +55,7 @@ public class GameFunctions {
         Game current = game;
 
         for (Move move : moves) {
-            current = makeMove(current, move);
+            current = applyMove(current, move);
             if (current.isGameOver()) {
                 break;
             }
@@ -112,7 +115,8 @@ public class GameFunctions {
                 game.position(),
                 game.history(),
                 game.state(),
-                game.legalMoves()
+                game.legalMoves(),
+                game.moveHistory()
         );
     }
 
@@ -129,7 +133,8 @@ public class GameFunctions {
                 game.position(),
                 game.history(),
                 newState,
-                game.legalMoves()
+                game.legalMoves(),
+                game.moveHistory()
         );
     }
 
@@ -137,5 +142,10 @@ public class GameFunctions {
         List<Position> newHistory = new ArrayList<>(history);
         newHistory.add(newPosition);
         return List.copyOf(newHistory); // Return immutable list
+    }
+    private static List<Move> appendToHistory(List<Move> history, Move move) {
+        List<Move> newHistory = new ArrayList<>(history);
+        newHistory.add(move);
+        return List.copyOf(newHistory);
     }
 }

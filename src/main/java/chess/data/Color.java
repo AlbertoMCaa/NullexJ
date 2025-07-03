@@ -12,4 +12,7 @@ public enum Color {
     public Color opposite() {
         return this == WHITE ? BLACK : WHITE;
     }
+    public static Color getPieceColor(int pieceIndex) {
+        return pieceIndex < 6 ? Color.WHITE : Color.BLACK;
+    }
 }
