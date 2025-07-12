@@ -52,6 +52,9 @@ public record Move(int encoded) {
     public static Move castling(int from, int to) {
         return new Move(encode(from, to, 0, CASTLING));
     }
+    public static Move fromEncoded(int encoded) {
+        return new Move(encoded);
+    }
 
     // Compact constructor with validation
     public Move {
