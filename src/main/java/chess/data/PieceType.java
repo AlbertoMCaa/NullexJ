@@ -9,14 +9,24 @@ public enum PieceType {
         this.index = index;
     }
 
+    // Precomputed values array
+    private static final PieceType[] VALUES = values();
+
+    // Precomputed 12-element lookup: [white pieces 0-5] + [black pieces 6-11]
+    public static final PieceType[] PIECE_INDEX_TO_TYPE = new PieceType[12];
+
+    static {
+        for (int i = 0; i < 12; i++) {
+            PIECE_INDEX_TO_TYPE[i] = VALUES[i % 6];
+        }
+    }
+
     public int toBitboardIndex(Color color) {
         return color.index * 6 + index;
     }
 
     public static PieceType fromCombinedIndex(int index) {
-        int colorOffset = index / 6; // 0=white, 1=black
-        int pieceIndex = index % 6;
-        return values()[pieceIndex];
+        return PIECE_INDEX_TO_TYPE[index];
     }
 
     public static boolean isPawn(int pieceIndex) {
@@ -27,7 +37,21 @@ public enum PieceType {
         return pieceIndex == 5 || pieceIndex == 11;
     }
 
+    public static boolean isRook(int pieceIndex) {
+        return pieceIndex == 3 || pieceIndex == 9; // White rook or black rook
+    }
+
     public static PieceType getPieceType(int pieceIndex) {
-        return PieceType.values()[pieceIndex % 6];
+        return PIECE_INDEX_TO_TYPE[pieceIndex];
+    }
+
+    public static PieceType getPromotionPieceType(Move move) {
+        return switch (move.promotionType()) {
+            case Move.PROMO_KNIGHT -> PieceType.KNIGHT;
+            case Move.PROMO_BISHOP -> PieceType.BISHOP;
+            case Move.PROMO_ROOK -> PieceType.ROOK;
+            case Move.PROMO_QUEEN -> PieceType.QUEEN;
+            default -> throw new IllegalArgumentException("Invalid promotion type");
+        };
     }
 }
