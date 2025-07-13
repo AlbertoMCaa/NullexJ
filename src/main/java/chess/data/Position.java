@@ -1,5 +1,9 @@
 package chess.data;
 
+import chess.functions.hash.ZobristHash;
+
+import java.util.Arrays;
+
 public record Position(
         long[] bitboards,           // [wP, wN, wB, wR, wQ, wK, bP, bN, bB, bR, bQ, bK]
         boolean whiteToMove,
@@ -42,5 +46,26 @@ public record Position(
             }
         }
         return -1;
+    }
+
+    public long zobristHash() {
+        return ZobristHash.computeHash(this);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (!(obj instanceof Position other)) return false;
+
+        // Zobrist hash comparison
+        if (this.zobristHash() != other.zobristHash()) {
+            return false;
+        }
+
+        // Fallback full equal implementation
+        return Arrays.equals(this.bitboards, other.bitboards) &&
+                this.whiteToMove == other.whiteToMove &&
+                this.castlingRights == other.castlingRights &&
+                this.enPassantSquare == other.enPassantSquare;
     }
 }
