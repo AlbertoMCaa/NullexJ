@@ -1,7 +1,5 @@
 package chess.data;
 
-import chess.functions.hash.ZobristHash;
-
 import java.util.Arrays;
 
 public record Position(
@@ -13,21 +11,22 @@ public record Position(
         int fullmoveNumber,
         long occupied,             // Cached for performance
         long whitePieces,          // Cached for performance
-        long blackPieces           // Cached for performance
+        long blackPieces,           // Cached for performance
+        long zobristHash
 ) {
     // Factory method for creating positions
     public static Position create(long[] bitboards, boolean whiteToMove,
                                   byte castlingRights, int enPassantSquare,
-                                  int halfMoveClock, int fullMoveNumber) {
+                                  int halfMoveClock, int fullMoveNumber, long zobristHash) {
         long white = bitboards[0] | bitboards[1] | bitboards[2] |
                 bitboards[3] | bitboards[4] | bitboards[5];
         long black = bitboards[6] | bitboards[7] | bitboards[8] |
                 bitboards[9] | bitboards[10] | bitboards[11];
         long occupied = white | black;
 
-        return new Position(bitboards.clone(), whiteToMove, castlingRights,
+        return new Position(bitboards, whiteToMove, castlingRights,
                 enPassantSquare, halfMoveClock, fullMoveNumber,
-                occupied, white, black);
+                occupied, white, black, zobristHash);
     }
 
     public long friendlyPieces() {
@@ -46,10 +45,6 @@ public record Position(
             }
         }
         return -1;
-    }
-
-    public long zobristHash() {
-        return ZobristHash.computeHash(this);
     }
 
     @Override

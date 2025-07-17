@@ -2,7 +2,7 @@ package chess.functions.moves;
 
 import chess.data.*;
 import chess.functions.attacks.AttackMasks;
-import chess.functions.rules.CheckRules;
+import chess.functions.rules.CheckRules2;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,7 +14,7 @@ public final class MoveGeneration {
     // Main entry point for legal move generation
     public static List<Move> generateLegalMoves(Position position) {
         return generatePseudoLegalMoves(position).stream()
-                .filter(move -> !CheckRules.leavesKingInCheck(position, move))
+                .filter(move -> !CheckRules2.leavesKingInCheck(position, move))
                 .toList();
     }
 
@@ -164,14 +164,8 @@ public final class MoveGeneration {
         while (pieces != 0) {
             int fromSquare = Long.numberOfTrailingZeros(pieces);
             Square from = Square.of(fromSquare);
-            //PieceType pt = PieceType.fromCombinedIndex(position.pieceAt(fromSquare)); // temp fix  TODO: Find the last remaining perfect magics for rooks
 
             long attacks = attackFunction.apply(from) & ~position.friendlyPieces();
-            //long realAttacks = computeRealSliderAttacks(from, position, pt) & ~position.friendlyPieces(); // temp fix
-
-//            if (attacks != realAttacks) {
-//                attacks = realAttacks;
-//            }
 
             addMovesFromBitboard(from, attacks, moves);
 
@@ -198,7 +192,7 @@ public final class MoveGeneration {
         Square kingSquare = Square.of(color == Color.WHITE ? 4 : 60);
 
         // Can't castle when in check
-        if (CheckRules.isSquareAttacked(position, kingSquare, color.opposite())) {
+        if (CheckRules2.isSquareAttacked(position, kingSquare, color.opposite())) {
             return;
         }
 
@@ -227,8 +221,8 @@ public final class MoveGeneration {
         Square f1g1 = Square.of(color == Color.WHITE ? 5 : 61);
         Square g1g8 = Square.of(kingDestination);
 
-        if (!CheckRules.isSquareAttacked(position, f1g1, color.opposite()) &&
-                !CheckRules.isSquareAttacked(position, g1g8, color.opposite())) {
+        if (!CheckRules2.isSquareAttacked(position, f1g1, color.opposite()) &&
+                !CheckRules2.isSquareAttacked(position, g1g8, color.opposite())) {
             moves.add(Move.castling(kingSquare, kingDestination));
         }
     }
@@ -247,94 +241,9 @@ public final class MoveGeneration {
         Square d1d8 = Square.of(color == Color.WHITE ? 3 : 59);
         Square c1c8 = Square.of(kingDestination);
 
-        if (!CheckRules.isSquareAttacked(position, d1d8, color.opposite()) &&
-                !CheckRules.isSquareAttacked(position, c1c8, color.opposite())) {
+        if (!CheckRules2.isSquareAttacked(position, d1d8, color.opposite()) &&
+                !CheckRules2.isSquareAttacked(position, c1c8, color.opposite())) {
             moves.add(Move.castling(kingSquare, kingDestination));
-        }
-    }
-
-    // Rook attacks (4 directions)
-    private static long computeRookAttacksSlow(Square sq, long blockers) {
-        long attacks = 0L;
-        int file = sq.file();
-        int rank = sq.rank();
-
-        // North (increasing rank)
-        for (int r = rank + 1; r < 8; r++) {
-            long bb = 1L << (file + r * 8);
-            attacks |= bb;
-            if ((blockers & bb) != 0) break;
-        }
-
-        // South (decreasing rank)
-        for (int r = rank - 1; r >= 0; r--) {
-            long bb = 1L << (file + r * 8);
-            attacks |= bb;
-            if ((blockers & bb) != 0) break;
-        }
-
-        // East (increasing file)
-        for (int f = file + 1; f < 8; f++) {
-            long bb = 1L << (f + rank * 8);
-            attacks |= bb;
-            if ((blockers & bb) != 0) break;
-        }
-
-        // West (decreasing file)
-        for (int f = file - 1; f >= 0; f--) {
-            long bb = 1L << (f + rank * 8);
-            attacks |= bb;
-            if ((blockers & bb) != 0) break;
-        }
-
-        return attacks;
-    }
-    // Bishop attacks (4 diagonals)
-    private static long computeBishopAttacksSlow(Square sq, long blockers) {
-        long attacks = 0L;
-        int file = sq.file();
-        int rank = sq.rank();
-
-        // Northeast (file++, rank++)
-        for (int f = file + 1, r = rank + 1; f < 8 && r < 8; f++, r++) {
-            long bb = 1L << (f + r * 8);
-            attacks |= bb;
-            if ((blockers & bb) != 0) break;
-        }
-
-        // Northwest (file--, rank++)
-        for (int f = file - 1, r = rank + 1; f >= 0 && r < 8; f--, r++) {
-            long bb = 1L << (f + r * 8);
-            attacks |= bb;
-            if ((blockers & bb) != 0) break;
-        }
-
-        // Southeast (file++, rank--)
-        for (int f = file + 1, r = rank - 1; f < 8 && r >= 0; f++, r--) {
-            long bb = 1L << (f + r * 8);
-            attacks |= bb;
-            if ((blockers & bb) != 0) break;
-        }
-
-        // Southwest (file--, rank--)
-        for (int f = file - 1, r = rank - 1; f >= 0 && r >= 0; f--, r--) {
-            long bb = 1L << (f + r * 8);
-            attacks |= bb;
-            if ((blockers & bb) != 0) break;
-        }
-
-        return attacks;
-    }
-
-    private static long computeRealSliderAttacks(Square square, Position position, PieceType pt) {
-        long blockers = position.occupied();
-
-        switch (pt) {
-            case ROOK:   return computeRookAttacksSlow(square, blockers);
-            case BISHOP: return computeBishopAttacksSlow(square, blockers);
-            case QUEEN:  return computeRookAttacksSlow(square, blockers) |
-                    computeBishopAttacksSlow(square, blockers);
-            default:     return 0L; // Should never happen for sliding pieces
         }
     }
 }
