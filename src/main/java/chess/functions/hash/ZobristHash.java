@@ -37,7 +37,6 @@ public final class ZobristHash {
         }
     }
 
-    // this contract should change, because now the position has a zobristHash row.
     public static long computeHash(long[] bitboard, boolean WhiteToMove, byte castlingRights, int enPassantTarget) {
         long hash = 0L;
         // Hash all pieces on the board
